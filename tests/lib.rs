@@ -6,7 +6,7 @@ use tempdir::TempDir;
 
 use pcap::{
     Activated, Active, Capture, ConnectionStatus, DeviceFlags, IfFlags, Linktype, Offline, Packet,
-    PacketHeader,
+    PacketHeader, bpf_program_from_instructions,
 };
 #[cfg(not(windows))]
 use pcap::{Error, Precision};
@@ -328,11 +328,17 @@ fn test_compile() {
     assert!(!instructions.is_empty());
     assert!(program.filter(packet.data));
 
+    let program_copy = bpf_program_from_instructions(instructions);
+    assert!(program_copy.filter(packet.data));
+
     let program = bpf_capture.compile("src host 8.8.8.8", false).unwrap();
     let instructions = program.get_instructions();
 
     assert!(!instructions.is_empty());
     assert!(!program.filter(packet.data));
+
+    let program_copy = bpf_program_from_instructions(instructions);
+    assert!(!program_copy.filter(packet.data));
 }
 
 #[test]

@@ -1524,6 +1524,10 @@ pub struct BpfProgram(raw::bpf_program);
 impl BpfProgram {
     /// checks whether a filter matches a packet
     pub fn filter(&self, buf: &[u8]) -> bool {
+        self.filter_raw(buf) > 0
+    }
+
+    pub fn filter_raw(&self, buf: &[u8]) -> i32 {
         let header: raw::pcap_pkthdr = raw::pcap_pkthdr {
             ts: libc::timeval {
                 tv_sec: 0,
@@ -1532,7 +1536,7 @@ impl BpfProgram {
             caplen: buf.len() as u32,
             len: buf.len() as u32,
         };
-        unsafe { raw::pcap_offline_filter(&self.0, &header, buf.as_ptr()) > 0 }
+        unsafe { raw::pcap_offline_filter(&self.0, &header, buf.as_ptr()) }
     }
 
     pub fn get_instructions(&self) -> &[BpfInstruction] {
@@ -1562,3 +1566,19 @@ impl fmt::Display for BpfInstruction {
 }
 
 unsafe impl Send for BpfProgram {}
+
+/// Allocate a BpfProgram from raw instructions.
+pub fn bpf_program_from_instructions(instructions: &[BpfInstruction]) -> BpfProgram {
+    unsafe {
+        let mut bpf_program: raw::bpf_program = mem::zeroed();
+        // Owned by BpfProgram
+        let ins_c = libc::malloc(mem::size_of::<BpfInstruction>() * instructions.len()) as *mut BpfInstruction;
+        if ins_c.is_null() {
+            panic!("failed to allocate memory");
+        }
+        ins_c.copy_from(instructions.as_ptr(), instructions.len());
+        bpf_program.bf_len = instructions.len() as u32;
+        bpf_program.bf_insns = ins_c as *mut raw::bpf_insn;
+        BpfProgram(bpf_program)
+    }
+}
