@@ -95,6 +95,8 @@ pub use iterator::PacketIter;
 mod codec;
 pub use codec::PacketCodec;
 
+pub use raw::bpf_insn;
+
 /// An error received from pcap
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -1517,7 +1519,8 @@ fn test_struct_size() {
 }
 
 #[repr(transparent)]
-pub struct BpfInstruction(raw::bpf_insn);
+#[derive(Copy, Clone)]
+pub struct BpfInstruction(pub raw::bpf_insn);
 #[repr(transparent)]
 pub struct BpfProgram(raw::bpf_program);
 
